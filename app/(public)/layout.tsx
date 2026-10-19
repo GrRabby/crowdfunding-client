@@ -1,12 +1,11 @@
-// (public) route group layout
-// This wraps: / (home), /campaigns, /campaigns/[id]
-import Navbar from "@/app/components/Navbar";
+﻿import Navbar from "@/app/components/Navbar";
 
+// Public route group: /, /campaigns, /campaigns/[id]
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+    <div className="flex flex-col min-h-dvh bg-white">
       <Navbar />
-      <main style={{ flex: 1 }}>{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

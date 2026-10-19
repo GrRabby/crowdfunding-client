@@ -1,28 +1,15 @@
-﻿// Home page placeholder — url: /
-// Will be replaced with the full hero + sections in the Home Page step
-
+﻿// Home page placeholder — full hero built in Phase 2
 export default function HomePage() {
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "column",
-      gap: "1rem",
-      minHeight: "80dvh",
-      background: "#f9fafb",
-    }}>
-      <h1 style={{
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontWeight: 800,
-        fontSize: "2.5rem",
-        letterSpacing: "-0.03em",
-        color: "#0f0a1e",
-      }}>
+    <div className="flex flex-col items-center justify-center gap-4 min-h-[80dvh] bg-gray-50">
+      <h1
+        className="font-extrabold text-4xl tracking-tight text-[#0f0a1e]"
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      >
         Navbar done ✅
       </h1>
-      <p style={{ color: "#6b7280", fontSize: "1rem" }}>
-        Building <strong style={{ color: "#6d28d9" }}>Auth Context + Login</strong> next
+      <p className="text-gray-500 text-base">
+        Building <strong className="text-brand">Auth Context + Login</strong> next
       </p>
     </div>
   );

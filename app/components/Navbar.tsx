@@ -1,456 +1,405 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect, useRef } from "react";
+/**
+ * Navbar — FundForward public layout header
+ *
+ * States:
+ *  - Logged-out  → Login + Sign Up buttons
+ *  - Logged-in   → Credits chip, avatar dropdown (Dashboard / Logout)
+ *
+ * Features:
+ *  - Scroll-aware: adds backdrop-blur + shadow after 16 px scroll
+ *  - Mobile drawer (hamburger) for < md breakpoint
+ *  - Active link highlight via usePathname
+ *  - Click-outside closes avatar menu & mobile drawer
+ *  - framer-motion micro-animations on mount and dropdown
+ */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Rocket, Menu, X, Coins, LogOut,
-  LayoutDashboard, Bell, ChevronDown, User, Settings,
+  Coins,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Search,
+  Sparkles,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 
-// AuthUser type comes from AuthContext â€” no need to redefine it here
-
+// ─── Nav links shown to everyone ──────────────────────────────────────────────
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/campaigns", label: "Explore" },
 ];
 
-const ROLE_META: Record<string, { label: string; bg: string; color: string }> = {
-  creator: { label: "Creator", bg: "#ede9fe", color: "#6d28d9" },
-  supporter: { label: "Supporter", bg: "#dcfce7", color: "#16a34a" },
-  admin: { label: "Admin", bg: "#fef9c3", color: "#a16207" },
+// ─── Role → dashboard root ─────────────────────────────────────────────────────
+const DASHBOARD_PATH: Record<string, string> = {
+  creator: "/dashboard/creator",
+  supporter: "/dashboard/supporter",
+  admin: "/dashboard/admin",
 };
 
 export default function Navbar() {
+  const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const dropRef = useRef<HTMLDivElement>(null);
 
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dropOpen, setDropOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
-  const { user, logout } = useAuth();
+  const avatarRef = useRef<HTMLDivElement>(null);
 
+  // ── Scroll listener ──────────────────────────────────────────────────────────
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => { setMenuOpen(false); setDropOpen(false); }, [pathname]);
-
-  // Close dropdown on outside click
+  // ── Close avatar menu on outside click ──────────────────────────────────────
   useEffect(() => {
-    const onOutside = (e: MouseEvent) => {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
-        setDropOpen(false);
+    if (!avatarOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
       }
-    };
-    document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
-  }, []);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [avatarOpen]);
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  // ── Close drawer on route change ─────────────────────────────────────────────
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
 
-  const roleMeta = user ? (ROLE_META[user.role] ?? ROLE_META.supporter) : null;
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
+
+  const dashboardHref = user ? (DASHBOARD_PATH[user.role] ?? "/dashboard") : "/dashboard";
+
+  function isActive(href: string) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
 
   return (
     <>
-      <style>{`
-        /* Nav links */
-        .nv-link {
-          padding: 0.4rem 1rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #4b5563;
-          transition: color .15s ease, background .15s ease;
-          white-space: nowrap;
-        }
-        .nv-link:hover { color: #111827; background: #f3f4f6; }
-        .nv-link.active {
-          background: linear-gradient(135deg, #6d28d9, #4f46e5);
-          color: #fff !important;
-          font-weight: 600;
-          box-shadow: 0 2px 8px rgba(109,40,217,0.35);
-        }
-
-        /* Ghost button (Log in) */
-        .nv-ghost {
-          padding: 0.45rem 1.15rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #374151;
-          transition: color .15s, background .15s;
-          white-space: nowrap;
-        }
-        .nv-ghost:hover { color: #111827; background: #f3f4f6; }
-
-        /* Primary CTA (Get Started) */
-        .nv-cta {
-          padding: 0.48rem 1.3rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 700;
-          color: #fff;
-          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-          box-shadow: 0 4px 14px rgba(109,40,217,0.4);
-          transition: box-shadow .2s ease, transform .15s ease;
-          white-space: nowrap;
-        }
-        .nv-cta:hover {
-          box-shadow: 0 6px 20px rgba(109,40,217,0.55);
-          transform: translateY(-1px);
-        }
-
-        /* User avatar trigger */
-        .nv-avatar-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.45rem;
-          padding: 0.3rem 0.65rem 0.3rem 0.3rem;
-          border-radius: 9999px;
-          border: 1.5px solid #e5e7eb;
-          background: #fff;
-          cursor: pointer;
-          transition: border-color .15s, box-shadow .15s;
-        }
-        .nv-avatar-btn:hover {
-          border-color: #c4b5fd;
-          box-shadow: 0 2px 8px rgba(109,40,217,0.12);
-        }
-
-        /* Icon button (bell) */
-        .nv-icon-btn {
-          width: 36px; height: 36px;
-          border-radius: 9999px;
-          display: flex; align-items: center; justify-content: center;
-          color: #6b7280;
-          border: 1.5px solid #e5e7eb;
-          background: #fff;
-          transition: all .15s;
-        }
-        .nv-icon-btn:hover {
-          color: #6d28d9;
-          border-color: #c4b5fd;
-          background: #f5f3ff;
-        }
-
-        /* Dropdown panel */
-        .nv-dropdown {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          width: 240px;
-          background: #fff;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 16px;
-          padding: 0.4rem;
-          box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
-          animation: nv-drop-in .15s ease;
-          z-index: 200;
-        }
-        @keyframes nv-drop-in {
-          from { opacity: 0; transform: translateY(-6px) scale(.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .nv-drop-item {
-          display: flex; align-items: center; gap: 0.6rem;
-          width: 100%;
-          padding: 0.6rem 0.75rem;
-          border-radius: 10px;
-          font-size: 0.86rem;
-          font-weight: 500;
-          color: #374151;
-          transition: background .12s, color .12s;
-          text-align: left;
-        }
-        .nv-drop-item:hover { background: #f9fafb; color: #111827; }
-        .nv-drop-item.danger { color: #dc2626; }
-        .nv-drop-item.danger:hover { background: #fef2f2; }
-        .nv-drop-divider { height: 1px; background: #f3f4f6; margin: 0.35rem 0.5rem; }
-
-        /* Mobile */
-        .nv-mobile-panel {
-          display: none;
-          flex-direction: column;
-          padding: 0.5rem 1rem 1.25rem;
-          gap: 0.2rem;
-          border-top: 1px solid #f3f4f6;
-          background: #fff;
-          animation: nv-slide-down .18s ease;
-        }
-        @keyframes nv-slide-down {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .nv-mob-link {
-          display: flex; align-items: center; gap: 0.55rem;
-          padding: 0.7rem 0.9rem;
-          border-radius: 10px;
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: #374151;
-          transition: background .12s, color .12s;
-        }
-        .nv-mob-link:hover, .nv-mob-link.active {
-          background: #f5f3ff;
-          color: #6d28d9;
-        }
-
-        @media (max-width: 680px) {
-          .nv-desktop { display: none !important; }
-          .nv-hamburger { display: flex !important; }
-          .nv-mobile-panel { display: flex !important; }
-        }
-        @media (min-width: 681px) {
-          .nv-hamburger { display: none !important; }
-        }
-      `}</style>
-
-      <header style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-        background: "#fff",
-        borderBottom: scrolled ? "1px solid #e5e7eb" : "1px solid #f3f4f6",
-        boxShadow: scrolled
-          ? "0 4px 24px rgba(0,0,0,0.07)"
-          : "0 1px 0 #f3f4f6",
-        transition: "box-shadow .25s ease, border-color .25s ease",
-      }}>
-        <div style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 1.5rem",
-          height: 68,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
-        }}>
-
+      {/* ── Main bar ──────────────────────────────────────────────────────────── */}
+      <header
+        className={[
+          "fixed top-0 inset-x-0 z-50 transition-all duration-300",
+          scrolled
+            ? "bg-white/90 backdrop-blur-md shadow-[0_1px_24px_0_rgba(109,40,217,0.08)]"
+            : "bg-white/70 backdrop-blur-sm",
+        ].join(" ")}
+      >
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0, textDecoration: "none" }}>
-            <div style={{
-              width: 36, height: 36,
-              borderRadius: 11,
-              background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(109,40,217,0.35)",
-              flexShrink: 0,
-            }}>
-              <Rocket size={17} color="#fff" />
-            </div>
-            <span style={{
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontWeight: 800,
-              fontSize: "1.15rem",
-              letterSpacing: "-0.03em",
-              color: "#0f0a1e",
-            }}>
-              FundForward
+          <Link
+            href="/"
+            className="flex items-center gap-2 group shrink-0"
+            aria-label="FundForward home"
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 shadow-sm group-hover:shadow-brand-500/40 group-hover:scale-105 transition-all duration-200">
+              <Sparkles className="w-4 h-4 text-white" strokeWidth={2.2} />
+            </span>
+            <span
+              className="font-extrabold text-[1.1rem] tracking-tight text-[#0f0a1e]"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              Fund<span className="text-brand-600">Forward</span>
             </span>
           </Link>
 
-          {/* Center nav â€” pill container */}
-          <nav
-            className="nv-desktop"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.1rem",
-              padding: "0.25rem",
-              borderRadius: 9999,
-              background: "#f3f4f6",
-            }}
-          >
+          {/* Centre links — desktop only */}
+          <div className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`nv-link${isActive(link.href) ? " active" : ""}`}
+                className={[
+                  "relative px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-150",
+                  isActive(link.href)
+                    ? "text-brand-700 bg-brand-50"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                ].join(" ")}
               >
                 {link.label}
+                {isActive(link.href) && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="absolute inset-0 rounded-lg bg-brand-50 -z-10"
+                  />
+                )}
               </Link>
             ))}
-          </nav>
+          </div>
 
           {/* Right side */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-            {user ? (
-              <>
+          <div className="flex items-center gap-2">
+            {/* Search icon */}
+            <Link
+              href="/campaigns"
+              aria-label="Search campaigns"
+              className="hidden md:flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-brand-600 hover:bg-brand-50 transition-colors duration-150"
+            >
+              <Search className="w-4.5 h-4.5" />
+            </Link>
+
+            {/* Auth skeleton while loading */}
+            {isLoading ? (
+              <div className="flex gap-2">
+                <div className="h-9 w-20 rounded-lg bg-gray-100 animate-pulse" />
+                <div className="h-9 w-24 rounded-lg bg-gray-100 animate-pulse" />
+              </div>
+            ) : user ? (
+              /* ── Logged-in ── */
+              <div className="flex items-center gap-2">
                 {/* Credits chip */}
-                <div
-                  className="nv-desktop"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.35rem",
-                    padding: "0.35rem 0.85rem",
-                    borderRadius: 9999,
-                    background: "#fef9c3",
-                    border: "1.5px solid #fde68a",
-                    fontSize: "0.82rem",
-                    fontWeight: 700,
-                    color: "#92400e",
-                  }}
-                >
-                  <Coins size={13} />
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-sm font-semibold select-none">
+                  <Coins className="w-3.5 h-3.5 text-brand-500" />
                   {user.credits.toLocaleString()}
                 </div>
 
-                {/* Notification bell */}
-                <button className="nv-icon-btn nv-desktop" title="Notifications" aria-label="Notifications">
-                  <Bell size={15} />
-                </button>
-
-                {/* User dropdown */}
-                <div ref={dropRef} style={{ position: "relative" }}>
+                {/* Avatar button */}
+                <div ref={avatarRef} className="relative">
                   <button
-                    className="nv-avatar-btn"
-                    onClick={() => setDropOpen((o) => !o)}
-                    aria-expanded={dropOpen}
+                    id="navbar-avatar-btn"
+                    onClick={() => setAvatarOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-xl p-0.5 pr-2 border border-transparent hover:border-brand-200 hover:bg-brand-50/60 transition-all duration-150 group"
+                    aria-expanded={avatarOpen}
                     aria-haspopup="true"
                   >
                     {/* Avatar */}
-                    <div style={{
-                      width: 28, height: 28,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 700, fontSize: "0.78rem", color: "#fff",
-                      overflow: "hidden", flexShrink: 0,
-                    }}>
-                      {user.photoUrl
-                        ? <img src={user.photoUrl} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : user.name.charAt(0).toUpperCase()
-                      }
+                    {user.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.photoUrl}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-lg object-cover ring-2 ring-white"
+                      />
+                    ) : (
+                      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white">
+                        {initials}
+                      </span>
+                    )}
+                    <div className="hidden sm:flex flex-col items-start leading-tight">
+                      <span className="text-xs font-semibold text-gray-800 max-w-[96px] truncate">
+                        {user.name}
+                      </span>
+                      <span className="text-[10px] font-medium text-brand-500 capitalize">
+                        {user.role}
+                      </span>
                     </div>
-                    <span
-                      className="nv-desktop"
-                      style={{ fontSize: "0.85rem", fontWeight: 600, color: "#111827", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                    >
-                      {user.name.split(" ")[0]}
-                    </span>
                     <ChevronDown
-                      size={14}
-                      className="nv-desktop"
-                      style={{
-                        color: "#9ca3af",
-                        transition: "transform .2s",
-                        transform: dropOpen ? "rotate(180deg)" : "rotate(0deg)",
-                      }}
+                      className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${avatarOpen ? "rotate-180" : ""}`}
                     />
                   </button>
 
-                  {dropOpen && (
-                    <div className="nv-dropdown">
-                      {/* User info */}
-                      <div style={{ padding: "0.6rem 0.75rem 0.5rem", marginBottom: "0.2rem" }}>
-                        <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "#111827" }}>{user.name}</p>
-                        <p style={{ fontSize: "0.76rem", color: "#9ca3af", marginBottom: "0.45rem" }}>{user.email}</p>
-                        <span style={{
-                          display: "inline-flex", alignItems: "center",
-                          padding: "2px 9px", borderRadius: 9999,
-                          fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em",
-                          background: roleMeta!.bg, color: roleMeta!.color,
-                        }}>
-                          {roleMeta!.label}
-                        </span>
-                      </div>
-                      <div className="nv-drop-divider" />
+                  {/* Dropdown */}
+                  <AnimatePresence>
+                    {avatarOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ duration: 0.13 }}
+                        className="absolute right-0 mt-2 w-52 rounded-2xl bg-white shadow-xl shadow-gray-200/80 border border-gray-100 overflow-hidden"
+                        role="menu"
+                      >
+                        {/* User info header */}
+                        <div className="px-4 py-3 border-b border-gray-50">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                        </div>
 
-                      <Link href="/dashboard" className="nv-drop-item">
-                        <LayoutDashboard size={14} /> Dashboard
-                      </Link>
-                      <Link href="/dashboard/profile" className="nv-drop-item">
-                        <User size={14} /> Profile
-                      </Link>
-                      <Link href="/dashboard/settings" className="nv-drop-item">
-                        <Settings size={14} /> Settings
-                      </Link>
+                        {/* Credits (mobile) */}
+                        <div className="sm:hidden flex items-center gap-2 px-4 py-2.5 border-b border-gray-50">
+                          <Coins className="w-4 h-4 text-brand-500" />
+                          <span className="text-sm font-medium text-gray-700">
+                            {user.credits.toLocaleString()} credits
+                          </span>
+                        </div>
 
-                      <div className="nv-drop-divider" />
+                        <Link
+                          href={dashboardHref}
+                          role="menuitem"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition-colors duration-100"
+                          onClick={() => setAvatarOpen(false)}
+                        >
+                          <LayoutDashboard className="w-4 h-4 shrink-0" />
+                          Dashboard
+                        </Link>
 
-                      {/* Credits row */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.45rem 0.75rem", marginBottom: "0.2rem", borderRadius: 10, background: "#fffbeb" }}>
-                        <span style={{ fontSize: "0.8rem", color: "#92400e" }}>Credits</span>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#d97706", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                          <Coins size={12} /> {user.credits.toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="nv-drop-divider" />
-
-                      <button onClick={logout} className="nv-drop-item danger" style={{ width: "100%" }}>
-                        <LogOut size={14} /> Log out
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          role="menuitem"
+                          onClick={logout}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors duration-100"
+                        >
+                          <LogOut className="w-4 h-4 shrink-0" />
+                          Sign out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </>
+              </div>
             ) : (
-              <>
-                <Link href="/login" className="nv-ghost nv-desktop">Log in</Link>
-                <Link href="/register" className="nv-cta">Get Started</Link>
-              </>
-            )}
-
-            {/* Hamburger */}
-            <button
-              className="nv-icon-btn nv-hamburger"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Toggle menu"
-              style={{ display: "none" }}
-            >
-              {menuOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-          </div>
-        </div>
-
-        {menuOpen && (
-          <div className="nv-mobile-panel">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`nv-mob-link${isActive(link.href) ? " active" : ""}`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div style={{ height: 1, background: "#f3f4f6", margin: "0.4rem 0" }} />
-            {user ? (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0.9rem" }}>
-                  <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>Credits</span>
-                  <span style={{ fontWeight: 700, color: "#d97706", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <Coins size={13} /> {user.credits.toLocaleString()}
-                  </span>
-                </div>
-                <Link href="/dashboard" className="nv-mob-link"><LayoutDashboard size={15} /> Dashboard</Link>
-                <button onClick={logout} className="nv-mob-link" style={{ width: "100%", color: "#dc2626" }}>
-                  <LogOut size={15} /> Log out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="nv-mob-link">Log in</Link>
+              /* ── Logged-out ── */
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  href="/login"
+                  id="navbar-login-btn"
+                  className="px-4 py-2 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50 hover:text-brand-700 transition-colors duration-150"
+                >
+                  Log in
+                </Link>
                 <Link
                   href="/register"
-                  style={{ margin: "0.3rem 0 0", padding: "0.75rem", borderRadius: 12, fontWeight: 700, fontSize: "0.9rem", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #4f46e5)", textAlign: "center" }}
+                  id="navbar-register-btn"
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-sm hover:shadow-brand-500/30 hover:shadow-md transition-all duration-200"
                 >
-                  Get Started
+                  Get started
                 </Link>
-              </>
+              </div>
             )}
+
+            {/* Hamburger — mobile */}
+            <button
+              id="navbar-menu-toggle"
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors duration-150"
+              onClick={() => setDrawerOpen((v) => !v)}
+              aria-label="Toggle menu"
+              aria-expanded={drawerOpen}
+            >
+              {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-        )}
+        </nav>
       </header>
+
+      {/* ── Spacer so content doesn't hide under fixed bar ────────────────────── */}
+      <div className="h-16" aria-hidden />
+
+      {/* ── Mobile drawer ─────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden"
+              onClick={() => setDrawerOpen(false)}
+            />
+
+            {/* Drawer panel */}
+            <motion.aside
+              key="drawer"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 380, damping: 36 }}
+              className="fixed top-0 right-0 bottom-0 z-50 w-72 bg-white shadow-2xl flex flex-col md:hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 h-16 border-b border-gray-100">
+                <span
+                  className="font-extrabold text-base text-[#0f0a1e]"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  Fund<span className="text-brand-600">Forward</span>
+                </span>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Nav links */}
+              <nav className="flex flex-col gap-1 p-4">
+                {NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={[
+                      "px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150",
+                      isActive(link.href)
+                        ? "bg-brand-50 text-brand-700 font-semibold"
+                        : "text-gray-700 hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+
+              {/* Bottom auth section */}
+              <div className="mt-auto p-4 border-t border-gray-100">
+                {!isLoading && !user && (
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/login"
+                      className="w-full text-center px-4 py-2.5 text-sm font-semibold text-gray-700 rounded-xl border border-gray-200 hover:border-brand-200 hover:text-brand-700 transition-colors duration-150"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="w-full text-center px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-sm transition-all duration-200"
+                    >
+                      Get started
+                    </Link>
+                  </div>
+                )}
+
+                {!isLoading && user && (
+                  <div className="flex flex-col gap-2">
+                    {/* Credits */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-50">
+                      <Coins className="w-4 h-4 text-brand-500" />
+                      <span className="text-sm font-semibold text-brand-700">
+                        {user.credits.toLocaleString()} credits
+                      </span>
+                    </div>
+                    <Link
+                      href={dashboardHref}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={logout}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-150 w-full"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

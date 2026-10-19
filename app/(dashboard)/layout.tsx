@@ -1,12 +1,10 @@
-﻿// (dashboard) route group layout
-// Wraps: /dashboard (creator/supporter/admin)
-
+﻿// Dashboard route group: /dashboard/**
+// Dark sidebar layout — sidebar will be built in Phase 4
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", minHeight: "100dvh", background: "var(--bg-base)" }}>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <main style={{ flex: 1, padding: "1.5rem" }}>{children}</main>
-      </div>
+    <div className="flex min-h-dvh bg-[#0d0e1a] text-[#f0f1ff]">
+      {/* Sidebar placeholder — built in Phase 4 */}
+      <main className="flex-1 p-6">{children}</main>
     </div>
   );
 }
