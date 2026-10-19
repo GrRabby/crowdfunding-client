@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -7,39 +7,31 @@ import {
   Rocket, Menu, X, Coins, LogOut,
   LayoutDashboard, Bell, ChevronDown, User, Settings,
 } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface AuthUser {
-  id: number;
-  name: string;
-  email: string;
-  role: "creator" | "supporter" | "admin";
-  credits: number;
-  photoUrl: string | null;
-}
+// AuthUser type comes from AuthContext â€” no need to redefine it here
 
 const NAV_LINKS = [
-  { href: "/",          label: "Home"    },
+  { href: "/", label: "Home" },
   { href: "/campaigns", label: "Explore" },
 ];
 
 const ROLE_META: Record<string, { label: string; bg: string; color: string }> = {
-  creator:   { label: "Creator",   bg: "#ede9fe", color: "#6d28d9" },
+  creator: { label: "Creator", bg: "#ede9fe", color: "#6d28d9" },
   supporter: { label: "Supporter", bg: "#dcfce7", color: "#16a34a" },
-  admin:     { label: "Admin",     bg: "#fef9c3", color: "#a16207" },
+  admin: { label: "Admin", bg: "#fef9c3", color: "#a16207" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const pathname = usePathname();
-  const dropRef  = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
-  const [scrolled,  setScrolled]  = useState(false);
-  const [menuOpen,  setMenuOpen]  = useState(false);
-  const [dropOpen,  setDropOpen]  = useState(false);
-  const [user,      setUser]      = useState<AuthUser | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dropOpen, setDropOpen] = useState(false);
 
-  /* ── Effects ──────────────────────────────────────────────────────────────── */
+  const { user, logout } = useAuth();
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -47,13 +39,6 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => { setMenuOpen(false); setDropOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("cf_user");
-      if (stored) setUser(JSON.parse(stored));
-    } catch { /* ignore */ }
-  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -66,23 +51,13 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onOutside);
   }, []);
 
-  /* ── Helpers ──────────────────────────────────────────────────────────────── */
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-  function handleLogout() {
-    localStorage.removeItem("cf_token");
-    localStorage.removeItem("cf_user");
-    setUser(null);
-    window.location.href = "/";
-  }
-
   const roleMeta = user ? (ROLE_META[user.role] ?? ROLE_META.supporter) : null;
 
-  /* ── Render ───────────────────────────────────────────────────────────────── */
   return (
     <>
-      {/* ── Scoped CSS ────────────────────────────────────────────────────── */}
       <style>{`
         /* Nav links */
         .nv-link {
@@ -247,7 +222,6 @@ export default function Navbar() {
           : "0 1px 0 #f3f4f6",
         transition: "box-shadow .25s ease, border-color .25s ease",
       }}>
-        {/* ── Main row ─────────────────────────────────────────────────── */}
         <div style={{
           maxWidth: 1200,
           margin: "0 auto",
@@ -282,7 +256,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Center nav — pill container */}
+          {/* Center nav â€” pill container */}
           <nav
             className="nv-desktop"
             style={{
@@ -308,7 +282,6 @@ export default function Navbar() {
           {/* Right side */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
             {user ? (
-              /* ── Logged In ─────────────────────────────────────────────── */
               <>
                 {/* Credits chip */}
                 <div
@@ -413,7 +386,7 @@ export default function Navbar() {
 
                       <div className="nv-drop-divider" />
 
-                      <button onClick={handleLogout} className="nv-drop-item danger" style={{ width: "100%" }}>
+                      <button onClick={logout} className="nv-drop-item danger" style={{ width: "100%" }}>
                         <LogOut size={14} /> Log out
                       </button>
                     </div>
@@ -421,7 +394,6 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              /* ── Logged Out ────────────────────────────────────────────── */
               <>
                 <Link href="/login" className="nv-ghost nv-desktop">Log in</Link>
                 <Link href="/register" className="nv-cta">Get Started</Link>
@@ -440,7 +412,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* ── Mobile panel ──────────────────────────────────────────────── */}
         {menuOpen && (
           <div className="nv-mobile-panel">
             {NAV_LINKS.map((link) => (
@@ -462,7 +433,7 @@ export default function Navbar() {
                   </span>
                 </div>
                 <Link href="/dashboard" className="nv-mob-link"><LayoutDashboard size={15} /> Dashboard</Link>
-                <button onClick={handleLogout} className="nv-mob-link" style={{ width: "100%", color: "#dc2626" }}>
+                <button onClick={logout} className="nv-mob-link" style={{ width: "100%", color: "#dc2626" }}>
                   <LogOut size={15} /> Log out
                 </button>
               </>

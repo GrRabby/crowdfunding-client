@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/app/context/AuthContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -36,15 +37,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: "var(--bg-elevated)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border-default)",
-              fontFamily: "var(--font-inter)",
+              background: "#fff",
+              color: "#111827",
+              border: "1px solid #e5e7eb",
+              fontFamily: "Inter, sans-serif",
             },
           }}
           richColors
@@ -53,3 +56,4 @@ export default function RootLayout({
     </html>
   );
 }
+
